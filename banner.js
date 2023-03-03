@@ -1,4 +1,4 @@
-const canvasContainer = document.getElementById("#canvas-container");
+const canvasContainer = document.getElementById("canvas-container");
 const canvas = document.querySelector("canvas");
 canvas.width = 300;
 canvas.height = 250;
@@ -11,41 +11,50 @@ const frames = [
 ];
 
 function drawFrame(frame) {
-  //   ctx.fillStyle = frame.color;
-  //   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   const img = new Image();
   img.src = frame.imageUrl;
   img.onload = () => {
-    // fade in the image
-    let opacity = 0;
-    const fadeInInterval = setInterval(() => {
-      opacity += 0.1;
-      if (opacity >= 1) {
-        opacity = 1;
-        clearInterval(fadeInInterval);
-      }
-      ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
-    }, 100);
+    // create a new canvas to use as a temporary buffer
+    const buffer = document.createElement("canvas");
+    buffer.width = canvas.width;
+    buffer.height = canvas.height;
+    const bufferCtx = buffer.getContext("2d");
+    bufferCtx.drawImage(img, 0, 0, buffer.width, buffer.height);
+
+    // Create a new image element from the buffer canvas
+    const bufferImg = new Image();
+    bufferImg.src = buffer.toDataURL();
+    bufferImg.style.opacity = 0;
+    bufferImg.style.position = "absolute";
+    bufferImg.style.top = "0";
+    bufferImg.style.left = "0";
+    canvasContainer.appendChild(bufferImg);
+
+    // Fade in the image using a CSS animation
+    const fadeInDuration = 1000;
+    bufferImg.style.opacity = 0;
+    bufferImg.style.transition = `opacity ${
+      fadeInDuration / 1000
+    }s ease-in-out`;
+    canvasContainer.appendChild(bufferImg);
+    requestAnimationFrame(() => {
+      bufferImg.style.opacity = 1;
+    });
 
     // Wait for the duration of the frame
     setTimeout(() => {
-      // Fade out image
-      let opacity = 1;
-      const fadeOutInterval = setInterval(() => {
-        opacity -= 0.1;
-        if (opacity <= 0) {
-          opacity = 0;
-          clearInterval(fadeOutInterval);
-        }
-        ctx.save();
-        ctx.globalAlpha = opacity;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
-      }, 100);
+      // Fade out image using a CSS animation
+      const fadeOutDuration = 1000;
+      bufferImg.style.opacity = 0;
+      bufferImg.style.transition = `opacity ${
+        fadeOutDuration / 1000
+      }s ease-in-out`;
+      requestAnimationFrame(() => {
+        bufferImg.style.opacity = 0;
+        setTimeout(() => {
+          canvasContainer.removeChild(bufferImg);
+        }, fadeOutDuration);
+      });
     }, frame.duration - 1000);
   };
 }
@@ -61,7 +70,9 @@ function playAnimation() {
       frameIndex++;
 
       if (frameIndex >= frames.length) {
+        clearInterval(intervalID);
         frameIndex = 0;
+        return;
       }
       drawFrame(frames[frameIndex]);
     }
